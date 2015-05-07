@@ -6,6 +6,7 @@ $(function() {
         self.loginState = parameters[1];
         self.connection = parameters[2];
 
+        self.hex_path = ko.observable();
 
         self._displayNotification = function(response, titleSuccess, textSuccess) {
             if (response.result) {
