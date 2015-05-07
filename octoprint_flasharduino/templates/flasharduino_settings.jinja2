@@ -10,5 +10,7 @@
         </div>
     </div>
 </div>
+<label for="connection_ports_flash" data-bind="css: {disabled: !isErrorOrClosed()}, enable: isErrorOrClosed() && loginState.isUser()">{{ _('Serial Port') }}</label>
 <select id="connection_ports_flash" data-bind="options: connection.portOptions, optionsCaption: 'AUTO', value: connection.selectedPort, css: {disabled: connection.!isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
+<label for="connection_baudrates_flash" data-bind="css: {disabled: !isErrorOrClosed()}, enable: isErrorOrClosed() && loginState.isUser()">{{ _('Baud rates') }}</label>
 <select id="connection_baudrates_flash" data-bind="options: connection.baudrateOptions, optionsCaption: 'AUTO', value: connection.selectedBaudrate, css: {disabled: connection.!isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
