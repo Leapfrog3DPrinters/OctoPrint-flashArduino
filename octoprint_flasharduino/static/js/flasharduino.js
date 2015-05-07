@@ -39,6 +39,6 @@ $(function() {
         ["settingsViewModel", "loginStateViewModel", "connectionViewModel"],
 
         // Finally, this is the list of all elements we want this view model to be bound to.
-        [document.getElementById("#settings_plugin_flasharduino")]
+        "#settings_plugin_flasharduino"
     ]);
 });
