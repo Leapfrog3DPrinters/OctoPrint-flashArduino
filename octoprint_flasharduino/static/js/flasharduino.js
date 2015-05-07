@@ -4,41 +4,8 @@ $(function() {
 
         self.settings = parameters[0];
         self.loginState = parameters[1];
+        self.connection = parameters[2];
 
-
-
-
-        self.requestData = function() {
-            $.ajax({
-                url: API_BASEURL + "connection",
-                method: "GET",
-                dataType: "json",
-                success: function(response) {
-                    self.fromResponse(response);
-                }
-            })
-        };
-
-        self.fromResponse = function(response) {
-            var ports = response.options.ports;
-            var baudrates = response.options.baudrates;
-            var portPreference = response.options.portPreference;
-            var baudratePreference = response.options.baudratePreference;
-            var printerPreference = response.options.printerProfilePreference;
-            var printerProfiles = response.options.printerProfiles;
-
-            self.portOptions(ports);
-            self.baudrateOptions(baudrates);
-
-            if (!self.selectedPort() && ports && ports.indexOf(portPreference) >= 0)
-                self.selectedPort(portPreference);
-            if (!self.selectedBaudrate() && baudrates && baudrates.indexOf(baudratePreference) >= 0)
-                self.selectedBaudrate(baudratePreference);
-            if (!self.selectedPrinter() && printerProfiles && printerProfiles.indexOf(printerPreference) >= 0)
-                self.selectedPrinter(printerPreference);
-
-            self.saveSettings(false);
-        };
 
         self._displayNotification = function(response, titleSuccess, textSuccess) {
             if (response.result) {
@@ -58,10 +25,6 @@ $(function() {
             }
         };
 
-        self.onStartup = function() {
-            self.requestData();
-        };
-
      }
     // This is how our plugin registers itself with the application, by adding some configuration
     // information to the global variable ADDITIONAL_VIEWMODELS
@@ -72,7 +35,7 @@ $(function() {
         // This is a list of dependencies to inject into the plugin, the order which you request
         // here is the order in which the dependencies will be injected into your view model upon
         // instantiation via the parameters argument
-        ["settingsViewModel", "loginStateViewModel"],
+        ["settingsViewModel", "loginStateViewModel", "connectionViewModel"],
 
         // Finally, this is the list of all elements we want this view model to be bound to.
         [document.getElementById("#settings_plugin_flasharduino")]
