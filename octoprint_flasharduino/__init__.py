@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import flask
 import logging
+import sarge
 import logging.handlers
 import octoprint.plugin
 import octoprint.settings
@@ -61,7 +62,58 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			return flask.make_response("SUPER SUCCESS", 201)
 
+		#Shameless copy + alteration from PLuginManager
+		def _call_avrdude(self, args):
+			avrdude_command = self._settings.get(["avrdude_path"])
+			if avrdude_command is None:
+				#This needs the more thorough checking like the pip stuff in pluginmanager
+				raise RuntimeError(u"No avrdude path configured and {avrdude_command} does not exist or is not executable, can't install".format(**locals()))
 
+			command = [avrdude_command] + args
+
+			self._logger.debug(u"Calling: {}".format(" ".join(command)))
+
+			p = sarge.run(" ".join(command), shell=True, async=True, stdout=sarge.Capture(), stderr=sarge.Capture())
+			p.wait_events()
+
+			try:
+				while p.returncode is None:
+					line = p.stderr.readline(timeout=0.5)
+					if line:
+						self._log_stderr(line)
+
+					line = p.stdout.readline(timeout=0.5)
+					if line:
+						self._log_stdout(line)
+
+					p.commands[0].poll()
+
+			finally:
+				p.close()
+
+			stderr = p.stderr.text
+			if stderr:
+				self._log_stderr(*stderr.split("\n"))
+
+			stdout = p.stdout.text
+			if stdout:
+				self._log_stdout(*stdout.split("\n"))
+
+			return p.returncode
+
+		def _log_stdout(self, *lines):
+			self._log(lines, prefix=">", stream="stdout")
+
+		def _log_stderr(self, *lines):
+			self._log(lines, prefix="!", stream="stderr")
+
+		def _log(self, lines, prefix=None, stream=None, strip=True):
+			if strip:
+				lines = map(lambda x: x.strip(), lines)
+
+			self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", loglines=[dict(line=line, stream=stream) for line in lines]))
+			for line in lines:
+				self._console_logger.debug(u"{prefix} {line}".format(**locals()))
 
 __plugin_implementation__ = FlashArduino()
 __plugin_name__ = "Flash Arduino"
