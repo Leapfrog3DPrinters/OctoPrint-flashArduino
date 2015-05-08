@@ -37,9 +37,12 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				dict(type="settings", custom_bindings=True)
 			]
 
+		def on_settings_save(self, data):
+			super(FlashArduino, self).on_settings_save(data)
+
 		## Blueprint Plugin
-		@octoprint.plugin.BlueprintPlugin.route("/upload", methods=["POST"])
-		def upload_hex(self):
+		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
+		def flash(self):
 			hex_file = request.files['file']
 			if hex_file:
 				pass
