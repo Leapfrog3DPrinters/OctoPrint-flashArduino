@@ -3,7 +3,7 @@
     <div class="input-prepend">
 	    <span class="btn fileinput-button">
 	        <span>{{ _('Browse...') }}</span>
-	        <input id="settings-hex-upload" type="file" name="file" data-url="{{ url_for("plugin.flasharduino.flash") }}">
+	        <input id="settings-flash-arduino" type="file" name="file" data-url="{{ url_for("plugin.flasharduino.flash") }}">
 	    </span>
         <span class="add-on" data-bind="text: hex_path"></span>
     </div>
@@ -29,7 +29,7 @@
 <div class="control-group">
     <label class="control-label">{{ _('Programmer') }}</label>
     <div class="controls">
-        <select data-bind="options: programmers, optionsText: 'text', optionsValue: 'value', value: selected_board"></select>
+        <select data-bind="options: programmers, optionsText: 'text', optionsValue: 'value', value: selected_programmer"></select>
     </div>
 </div>
 <button class="btn btn-primary" id="settings-flash-arduino-start">{{ _('Flash') }}</button>

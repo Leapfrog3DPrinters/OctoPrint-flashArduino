@@ -14,7 +14,7 @@ $(function() {
         self.selected_programmer = ko.observable(undefined);
 
         self.flash_button = $("#settings-flash-arduino-start");
-        self.upload_hex = $("#settings_plugin_flasharduino");
+        self.upload_hex = $("#settings-flash-arduino");
 
         // Arrays of options
         self.programmers = [
@@ -42,7 +42,7 @@ $(function() {
             {"value": "m644 ", "text": gettext("ATmega644 SanguinoA")},
             {"value": "m644p", "text": gettext("ATmega644P Sanguino")},
             {"value": "m1284p", "text": gettext("ATmega1284P Sanguino")},
-            {"value": "m328p", "text": gettext("ATmega328P DUEMILANOVE")},
+            {"value": "m328p", "text": gettext("ATmega328P Duemilanove")},
             {"value": "usb646", "text": gettext("AT90USB646 Brainwave")}
         ];
 
@@ -54,9 +54,7 @@ $(function() {
                 if (data.files.length == 0) {
                     return false;
                 }
-
                 self.hex_path(data.files[0].name);
-
                 self.flash_button.unbind("click");
                 self.flash_button.on("click", function() {
                     var flash_data = {
@@ -65,7 +63,7 @@ $(function() {
                         board: self.selected_board(),
                         programmer: self.selected_programmer()
                     };
-                    data.flash_data = flash_data;
+                    data.formData = flash_data;
                     data.submit();
                 });
             },

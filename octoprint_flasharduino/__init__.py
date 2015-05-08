@@ -3,9 +3,9 @@ from __future__ import absolute_import
 
 import flask
 import logging
-
+import logging.handlers
 import octoprint.plugin
-
+import octoprint.settings
 
 ##~~ Init Plugin and Metadata
 
@@ -24,12 +24,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		##~~ Set default settings
 		def get_settings_defaults(self):
-			return dict(avrdude_path=None,
-						hex_path=None,
-						arduino_board=None,
-						baudrate=None,
-						port=None,
-						programmer=None)
+			return dict(avrdude_path=None)
 
 
 		def get_template_configs(self):
@@ -43,9 +38,28 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 		## Blueprint Plugin
 		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
 		def flash(self):
-			hex_file = request.files['file']
-			if hex_file:
-				pass
+			import datetime
+			from shutil import copyfile
+			import os
+
+			destination = "/tmp/octoprint-flasharduino/"
+			input_name = "file"
+			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
+			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+
+			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
+				hex_name = flask.request.values[input_upload_name]
+				hex_path = flask.request.values[input_upload_path]
+				try:
+					copyfile(hex_path, destination)
+				except Exception as e:
+					self._logger.exception("Error while copying file")
+					return flask.make_response("Something went wrong while copying file with message: {message}".format(str(e)), 500)
+			else:
+				self._logger.warn("No hex file included for flashing, aborting")
+				return flask.make_response("No file included", 400)
+
+			return flask.make_response("SUPER SUCCESS", 400)
 
 
 
