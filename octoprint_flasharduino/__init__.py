@@ -37,7 +37,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		## Blueprint Plugin
 		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
-		def flash(self):
+		def flash_hex_file(self):
 			import datetime
 			from shutil import copyfile
 			import os
@@ -59,7 +59,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				self._logger.warn("No hex file included for flashing, aborting")
 				return flask.make_response("No file included", 400)
 
-			return flask.make_response("SUPER SUCCESS", 400)
+			return flask.make_response("SUPER SUCCESS", 201)
 
 
 
