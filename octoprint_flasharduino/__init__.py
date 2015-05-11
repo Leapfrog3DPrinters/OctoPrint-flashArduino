@@ -16,6 +16,11 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			       octoprint.plugin.SettingsPlugin,
 			       octoprint.plugin.BlueprintPlugin):
 
+		def bodysize_hook(self, current_max_body_sizes, *args, **kwargs):
+			return [
+				("POST", "/plugin/" + self._identifier + "/flash", 512 * 1024) # max upload size = 512KB
+			]
+
 		##~~ AssetsPlugin
 		def get_assets(self):
 			return dict(
@@ -115,7 +120,12 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			for line in lines:
 				self._console_logger.debug(u"{prefix} {line}".format(**locals()))
 
-
-
-__plugin_implementation__ = FlashArduino()
 __plugin_name__ = "Flash Arduino"
+def __plugin_load__():
+	global __plugin_implementation__
+	__plugin_implementation__ = FlashArduino()
+
+	global __plugin_hooks__
+	__plugin_hooks__ = {
+		"octoprint.server.http.bodysize": __plugin_implementation__.bodysize_hook
+	}
