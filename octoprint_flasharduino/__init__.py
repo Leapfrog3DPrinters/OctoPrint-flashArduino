@@ -55,7 +55,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					copyfile(hex_path, destination)
 				except Exception as e:
 					self._logger.exception("Error while copying file")
-					return flask.make_response("Something went wrong while copying file with message: {message}".format(str(e)), 500)
+					return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
 			else:
 				self._logger.warn("No hex file included for flashing, aborting")
 				return flask.make_response("No file included", 400)
@@ -114,6 +114,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", loglines=[dict(line=line, stream=stream) for line in lines]))
 			for line in lines:
 				self._console_logger.debug(u"{prefix} {line}".format(**locals()))
+
+
 
 __plugin_implementation__ = FlashArduino()
 __plugin_name__ = "Flash Arduino"
