@@ -2,7 +2,7 @@ $(function() {
     function FlashArduinoViewModel(parameters) {
         var self = this;
 
-        self.settings = parameters[0];
+        self.settingsViewModel = parameters[0];
         self.loginState = parameters[1];
         self.connection = parameters[2];
 
@@ -58,11 +58,11 @@ $(function() {
                 self.flash_button.unbind("click");
                 self.flash_button.on("click", function() {
                     var flash_data = {
-                        port: self.selected_port(),
-                        baudrate: self.selected_baudrate(),
                         board: self.selected_board(),
-                        programmer: self.selected_programmer()
-                    };
+                        programmer: self.selected_programmer(),
+                        port: self.selected_port(),
+                        baudrate: self.selected_baudrate()
+                    }; 
                     data.formData = flash_data;
                     data.submit();
                 });
@@ -88,6 +88,10 @@ $(function() {
                     hide: false
                 });
             }
+        };
+
+        self.onBeforeBinding = function () {
+            self.settings = self.settingsViewModel.settings;
         };
 
      }

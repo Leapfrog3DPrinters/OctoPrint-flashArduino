@@ -35,32 +35,53 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		def get_template_configs(self):
 			return [
-				dict(type="settings", custom_bindings=True)
+				dict(type="settings", template="flasharduino_settings.jinja2", custom_bindings=True)
 			]
-
-		def on_settings_save(self, data):
-			super(FlashArduino, self).on_settings_save(data)
 
 		## Blueprint Plugin
 		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
 		def flash_hex_file(self):
 			import datetime
-			from shutil import copyfile
+			from shutil import copy2
 			import os
+			import tempfile
 
-			destination = "/tmp/octoprint-flasharduino/"
+
 			input_name = "file"
 			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
 			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
 
+			args = []
+			if "board" in flask.request.form:
+				board_arg = "-p " + flask.request.form['board']
+				args.append(board_arg)
+			if "programmer" in flask.request.form:
+				programmer_arg = "-c " + flask.request.form['programmer']
+				args.append(programmer_arg)
+			if "port" in flask.request.form:
+				port_arg = "-P " + flask.request.form['port']
+				args.append(port_arg)
+			if "baudrate" in flask.request.form:
+				baudrate_arg = "-b " + flask.request.form['baudrate']
+				args.append(baudrate_arg)
+			self._logger.debug(args)
+
 			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
-				hex_name = flask.request.values[input_upload_name]
+				temp_file = tempfile.NamedTemporaryFile(delete=False, dir="/tmp")
 				hex_path = flask.request.values[input_upload_path]
 				try:
-					copyfile(hex_path, destination)
+					temp_file.close()
+					copy2(hex_path, temp_file.name)
+					self._logger.debug("file created with name %s" % temp_file.name)
+					hex_path = temp_file.name
+					self._call_avrdude(args)
 				except Exception as e:
 					self._logger.exception("Error while copying file")
 					return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
+				finally:
+					os.remove(temp_file.name)
+					self._logger.debug("file deleted with name %s" % temp_file.name)
+
 			else:
 				self._logger.warn("No hex file included for flashing, aborting")
 				return flask.make_response("No file included", 400)

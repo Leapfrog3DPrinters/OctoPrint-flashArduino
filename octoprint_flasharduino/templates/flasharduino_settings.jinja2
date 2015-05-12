@@ -11,13 +11,13 @@
 <div class="control-group">
    <label for="connection_ports_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Serial Port') }}</label>
     <div class="controls">
-    	<select id="connection_ports_flash" data-bind="options: connection.portOptions, optionsCaption: 'AUTO', value: selected_port, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
+    	<select id="connection_ports_flash" data-bind="options: connection.portOptions, value: selected_port, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
     </div>
 </div>
 <div class="control-group">
     <label for="connection_baudrates_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Baud rate') }}</label>
     <div class="controls">
-    	<select id="connection_baudrates_flash" data-bind="options: connection.baudrateOptions, optionsCaption: 'AUTO', value: selected_baudrate, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
+    	<select id="connection_baudrates_flash" data-bind="options: connection.baudrateOptions, value: selected_baudrate, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
     </div>
 </div>
 <div class="control-group">
@@ -33,3 +33,11 @@
     </div>
 </div>
 <button class="btn btn-primary" id="settings-flash-arduino-start">{{ _('Flash') }}</button>
+<form class="form-horizontal">
+    <div class="control-group">
+        <label class="control-label" for="settings-avrdude-path">{{ _('Path to Avrdude') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugin.flasharduino.avrdude_path">
+        </div>
+    </div>
+</form>
