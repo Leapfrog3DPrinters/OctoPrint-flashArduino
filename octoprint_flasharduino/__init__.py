@@ -21,6 +21,9 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				("POST", "/plugin/" + self._identifier + "/flash", 512 * 1024) # max upload size = 512KB
 			]
 
+		def initialize(self):
+			self._console_logger = logging.getLogger("octoprint.plugins.pluginmanager.console")
+
 		##~~ AssetsPlugin
 		def get_assets(self):
 			return dict(
@@ -74,6 +77,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					copy2(hex_path, temp_file.name)
 					self._logger.debug("file created with name %s" % temp_file.name)
 					hex_path = temp_file.name
+					file_args = "-U flash:w:" + hex_path + ":i -D"
+					args.append(file_args)
 					self._call_avrdude(args)
 				except Exception as e:
 					self._logger.exception("Error while copying file")
