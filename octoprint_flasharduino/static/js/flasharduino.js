@@ -90,6 +90,42 @@ $(function() {
             }
         };
 
+        self.bar_progress = function(bar_type, progress) {
+            $("#"+bar_type+"_progress .bar").css("width", progress + "%");
+            $("#"+bar_type+"_progress .bar").text(gettext("Working..." ));
+            if (progress >= 100) {
+                $("#"+bar_type+"_progress").addClass("progress-striped").addClass("active");
+                $("#"+bar_type+"_progress .bar").text(gettext("Finishing ..."));
+            }
+
+        };
+
+        self.onDataUpdaterPluginMessage = function(plugin, data) {
+            if (plugin != "flasharduino") {
+                return;
+            }
+
+            if (!data.hasOwnProperty("type")) {
+                return;
+            }
+
+            var messageType = data.type;
+
+            if (messageType == "progress") {
+                var progress = data.progress;
+                var bar_type = data.bar_type;
+
+                self.bar_progress(bar_type, progress);
+
+
+            } else if (messageType == "result") {
+                var textSuccess, titleSuccess;
+
+                self._displayNotification(data, titleSuccess, textSuccess);
+            }
+
+        };
+
         self.onBeforeBinding = function () {
             self.settings = self.settingsViewModel.settings;
         };

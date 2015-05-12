@@ -7,6 +7,7 @@ import sarge
 import logging.handlers
 import octoprint.plugin
 import octoprint.settings
+import re
 
 ##~~ Init Plugin and Metadata
 
@@ -21,9 +22,6 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				("POST", "/plugin/" + self._identifier + "/flash", 512 * 1024) # max upload size = 512KB
 			]
 
-		def initialize(self):
-			self._console_logger = logging.getLogger("octoprint.plugins.pluginmanager.console")
-
 		##~~ AssetsPlugin
 		def get_assets(self):
 			return dict(
@@ -33,7 +31,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		##~~ Set default settings
 		def get_settings_defaults(self):
-			return dict(avrdude_path=None)
+			return dict(avrdude_path=None,
+			            avrdude_conf=None)
 
 
 		def get_template_configs(self):
@@ -54,6 +53,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
 			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
 
+			## Create list with arguments for avrdude from the POST in formData
 			args = []
 			if "board" in flask.request.form:
 				board_arg = "-p " + flask.request.form['board']
@@ -67,8 +67,13 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			if "baudrate" in flask.request.form:
 				baudrate_arg = "-b " + flask.request.form['baudrate']
 				args.append(baudrate_arg)
+			avrdude_conf = self._settings.get(["avrdude_conf"])
+			conf_arg = "-C " + avrdude_conf
+			args.append(conf_arg)
+
 			self._logger.debug(args)
 
+			## Upload the hexfile and try to flash the file. 
 			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
 				temp_file = tempfile.NamedTemporaryFile(delete=False, dir="/tmp")
 				hex_path = flask.request.values[input_upload_path]
@@ -85,7 +90,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
 				finally:
 					os.remove(temp_file.name)
-					self._logger.debug("file deleted with name %s" % temp_file.name)
+					self._logger.debug("File deleted with name %s" % temp_file.name)
 
 			else:
 				self._logger.warn("No hex file included for flashing, aborting")
@@ -109,11 +114,12 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			try:
 				while p.returncode is None:
-					line = p.stderr.readline(timeout=0.5)
+					line = p.stderr.readline()
 					if line:
 						self._log_stderr(line)
-
-					line = p.stdout.readline(timeout=0.5)
+						# NO WORK 
+						self._check_progress(line)
+					line = p.stdout.readline()
 					if line:
 						self._log_stdout(line)
 
@@ -132,6 +138,19 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			return p.returncode
 
+		## NO WORK
+		def _check_progress(self, line):
+			read = re.match('reading input', line)
+			if read: 
+				self._logger.debug("READ")
+			written = re.match('flash written', line)
+			if written:
+				self._logger.debug("WRITTEN")
+			verified = re.match('flash verified', line)
+			if verified:
+				self._logger.debug("VERIFIED")
+
+
 		def _log_stdout(self, *lines):
 			self._log(lines, prefix=">", stream="stdout")
 
@@ -144,7 +163,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", loglines=[dict(line=line, stream=stream) for line in lines]))
 			for line in lines:
-				self._console_logger.debug(u"{prefix} {line}".format(**locals()))
+				self._logger.debug(u"{prefix} {line}".format(**locals()))
 
 __plugin_name__ = "Flash Arduino"
 def __plugin_load__():

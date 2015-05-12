@@ -1,3 +1,20 @@
+<form class="form-horizontal">
+    <div class="control-group">
+        <label class="control-label" for="settings-avrdude-path">{{ _('Path to Avrdude') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.flasharduino.avrdude_path">
+        </div>
+    </div>
+</form>
+<form class="form-horizontal">
+    <div class="control-group">
+        <label class="control-label" for="settings-avrdude-conf">{{ _('Path to avrdude.conf') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.flasharduino.avrdude_conf">
+            Save these settings once before flashing.
+        </div>
+    </div>
+</form>
 <div class="control-group">
     <label class="control-label">{{ _('Hex file') }}</label>
     <div class="input-prepend">
@@ -33,11 +50,10 @@
     </div>
 </div>
 <button class="btn btn-primary" id="settings-flash-arduino-start">{{ _('Flash') }}</button>
-<form class="form-horizontal">
-    <div class="control-group">
-        <label class="control-label" for="settings-avrdude-path">{{ _('Path to Avrdude') }}</label>
-        <div class="controls">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.flasharduino.avrdude_path">
-        </div>
-    </div>
-</form>
+<!-- Not yet 
+<div id="flash_write_progress" class="progress" style="width: 100%;">
+    <div class="bar" style="width: 0%"></div>
+</div>
+<div id="flash_verify_progress" class="progress" style="width: 100%;">
+    <div class="bar" style="width: 0%"></div>
+</div> -->
