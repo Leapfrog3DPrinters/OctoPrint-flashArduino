@@ -68,14 +68,14 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				baudrate_arg = "-b " + flask.request.form['baudrate']
 				args.append(baudrate_arg)
 			avrdude_conf = self._settings.get(["avrdude_conf"])
-			conf_arg = "-C " + avrdude_conf
+			conf_arg = '"-C%s"' % avrdude_conf
 			args.append(conf_arg)
 
 			self._logger.debug(args)
 
 			## Upload the hexfile and try to flash the file. 
 			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
-				temp_file = tempfile.NamedTemporaryFile(delete=False, dir="/tmp")
+				temp_file = tempfile.NamedTemporaryFile(delete=False)
 				hex_path = flask.request.values[input_upload_path]
 				try:
 					temp_file.close()
@@ -105,7 +105,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				#This needs the more thorough checking like the pip stuff in pluginmanager
 				raise RuntimeError(u"No avrdude path configured and {avrdude_command} does not exist or is not executable, can't install".format(**locals()))
 
-			command = [avrdude_command] + args
+			command = ['"%s"' % avrdude_command] + args
 
 			self._logger.debug(u"Calling: {}".format(" ".join(command)))
 
