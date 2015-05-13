@@ -18,7 +18,7 @@ $(function() {
 
 
         self.boards = [
-            {"value": {"board": "m2560", "programmer": "wiring"}, "text": gettext("ATmega2560 Leapfrog CreatrHS, Ultimaker 2, RAMPS 1.3")},
+            {"value": {"board": "m2560", "programmer": "wiring"}, "text": gettext("ATmega2560 Leapfrog CreatrHS, Ultimaker 2, RAMPS 1.4")},
             {"value": {"board": "m1280", "programmer": "arduino"}, "text": gettext("ATmega1280 Arduino Mega")},
             {"value": {"board": "m328p", "programmer": "arduino"}, "text": gettext("Duemilanove /w ATmega328")},
             {"value": {"board": "atmega168", "programmer": "arduino"}, "text": gettext("Duemilanove /w ATmega168")}
@@ -50,11 +50,11 @@ $(function() {
             }
         });
 
-        self._displayNotification = function(response, titleSuccess, textSuccess) {
-            if (response.result) {
+        self._displayNotification = function(response) {
+            if (response == "success") {
                 new PNotify({
-                    title: "Flashing firmware succeeded",
-                    text: textSuccess,
+                    title: gettext("Flashing firmware succeeded"),
+                    text: gettext("Congratulations flashing the firmware was a success!"),
                     type: "success",
                     hide: false
                 })
@@ -107,9 +107,8 @@ $(function() {
 
 
             } else if (messageType == "result") {
-                var textSuccess, titleSuccess;
-
-                self._displayNotification(data, titleSuccess, textSuccess);
+                var result = data.result
+                self._displayNotification(result);
             }
 
         };

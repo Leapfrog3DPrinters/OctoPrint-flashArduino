@@ -8,6 +8,7 @@ import logging.handlers
 import octoprint.plugin
 import octoprint.settings
 import re
+import os
 
 ##~~ Init Plugin and Metadata
 
@@ -45,7 +46,6 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 		def flash_hex_file(self):
 			import datetime
 			from shutil import copy2
-			import os
 			import tempfile
 
 			## Reset UI
@@ -75,11 +75,12 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			input_name = "file"
 			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
 			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+			hex_path = flask.request.values[input_upload_path]
+			ext_path = flask.request.values[input_upload_name]
 
 			## Upload the hexfile and try to flash the file. 
-			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
+			if input_upload_name in flask.request.values and input_upload_path in flask.request.values and self.allowed_file(ext_path):
 				temp_file = tempfile.NamedTemporaryFile(delete=False)
-				hex_path = flask.request.values[input_upload_path]
 				try:
 					temp_file.close()
 					copy2(hex_path, temp_file.name)
@@ -96,10 +97,16 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					self._logger.debug("File deleted with name %s" % temp_file.name)
 
 			else:
-				self._logger.warn("No hex file included for flashing, aborting")
-				return flask.make_response("No file included", 400)
+				self._logger.warn("No .hex file included for flashing, aborting")
+				self._send_result_update("failed")
+				return flask.make_response("No .hex file included", 400)
 
 			return flask.make_response("SUPER SUCCESS", 201)
+
+		def allowed_file(self, filename):
+			ext = os.path.splitext(filename)[1]
+			self._logger.debug(ext)
+			return (ext == ".hex")
 
 		#Shameless copy + alteration from PLuginManager
 		def _call_avrdude(self, args):
@@ -159,6 +166,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				self._logger.debug("Hex file verified on flash")
 				self._send_progress_update("done", "flash_verify")
 				self._send_progress_update("busy", "flash_done")
+				self._send_result_update("success")
 			done = re.search('avrdude done.', line)
 			if done:
 				self._logger.debug("Flashing hex file done")
@@ -169,6 +177,9 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		def _send_progress_update(self, progress, bar_type):
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="progress", progress=progress, bar_type=bar_type))
+
+		def _send_result_update(self, result):
+			self._plugin_manager.send_plugin_message(self._identifier, dict(type="result", result=result))			
 
 		def _log_stdout(self, *lines):
 			self._log(lines, prefix=">", stream="stdout")
