@@ -48,10 +48,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 			import os
 			import tempfile
 
-
-			input_name = "file"
-			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
-			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+			## Reset UI
+			self._reset_progress()
 
 			## Create list with arguments for avrdude from the POST in formData
 			args = []
@@ -68,19 +66,24 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				baudrate_arg = "-b " + flask.request.form['baudrate']
 				args.append(baudrate_arg)
 			avrdude_conf = self._settings.get(["avrdude_conf"])
-			conf_arg = "-C " + avrdude_conf
-			args.append(conf_arg)
-
+			if avrdude_conf is not None:
+				conf_arg = '-C"%s"' % avrdude_conf
+				args.append(conf_arg)
 			self._logger.debug(args)
+
+			## Tornado hack
+			input_name = "file"
+			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
+			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
 
 			## Upload the hexfile and try to flash the file. 
 			if input_upload_name in flask.request.values and input_upload_path in flask.request.values:
-				temp_file = tempfile.NamedTemporaryFile(delete=False, dir="/tmp")
+				temp_file = tempfile.NamedTemporaryFile(delete=False)
 				hex_path = flask.request.values[input_upload_path]
 				try:
 					temp_file.close()
 					copy2(hex_path, temp_file.name)
-					self._logger.debug("file created with name %s" % temp_file.name)
+					self._logger.debug("File created with name %s" % temp_file.name)
 					hex_path = temp_file.name
 					file_args = "-U flash:w:" + hex_path + ":i -D"
 					args.append(file_args)
@@ -105,7 +108,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				#This needs the more thorough checking like the pip stuff in pluginmanager
 				raise RuntimeError(u"No avrdude path configured and {avrdude_command} does not exist or is not executable, can't install".format(**locals()))
 
-			command = [avrdude_command] + args
+			command = ['"%s"' % avrdude_command] + args
 
 			self._logger.debug(u"Calling: {}".format(" ".join(command)))
 
@@ -117,8 +120,6 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					line = p.stderr.readline()
 					if line:
 						self._log_stderr(line)
-						# NO WORK 
-						self._check_progress(line)
 					line = p.stdout.readline()
 					if line:
 						self._log_stdout(line)
@@ -138,18 +139,36 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			return p.returncode
 
-		## NO WORK
 		def _check_progress(self, line):
-			read = re.match('reading input', line)
+			initialized = re.search('initialized', line)
+			if initialized:
+				self._logger.debug("Device initialized")
+				self._send_progress_update("busy", "flash_read")
+			read = re.search('reading input', line)
 			if read: 
-				self._logger.debug("READ")
-			written = re.match('flash written', line)
+				self._logger.debug("Hex file read")
+				self._send_progress_update("done", "flash_read")
+				self._send_progress_update("busy", "flash_write")
+			written = re.search('flash written', line)
 			if written:
-				self._logger.debug("WRITTEN")
-			verified = re.match('flash verified', line)
+				self._logger.debug("Hex file written to flash")
+				self._send_progress_update("done", "flash_write")
+				self._send_progress_update("busy", "flash_verify")
+			verified = re.search('flash verified', line)
 			if verified:
-				self._logger.debug("VERIFIED")
+				self._logger.debug("Hex file verified on flash")
+				self._send_progress_update("done", "flash_verify")
+				self._send_progress_update("busy", "flash_done")
+			done = re.search('avrdude done.', line)
+			if done:
+				self._logger.debug("Flashing hex file done")
+				self._send_progress_update("done", "flash_done")
 
+		def _reset_progress(self):
+			self._send_progress_update("reset", "all")
+
+		def _send_progress_update(self, progress, bar_type):
+			self._plugin_manager.send_plugin_message(self._identifier, dict(type="progress", progress=progress, bar_type=bar_type))
 
 		def _log_stdout(self, *lines):
 			self._log(lines, prefix=">", stream="stdout")
@@ -163,6 +182,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", loglines=[dict(line=line, stream=stream) for line in lines]))
 			for line in lines:
+				self._check_progress(line)
 				self._logger.debug(u"{prefix} {line}".format(**locals()))
 
 __plugin_name__ = "Flash Arduino"

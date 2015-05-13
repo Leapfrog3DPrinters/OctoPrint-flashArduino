@@ -91,11 +91,21 @@ $(function() {
         };
 
         self.bar_progress = function(bar_type, progress) {
-            $("#"+bar_type+"_progress .bar").css("width", progress + "%");
-            $("#"+bar_type+"_progress .bar").text(gettext("Working..." ));
-            if (progress >= 100) {
-                $("#"+bar_type+"_progress").addClass("progress-striped").addClass("active");
-                $("#"+bar_type+"_progress .bar").text(gettext("Finishing ..."));
+            if(progress == "reset"){
+                var bar_types = ["flash_read", "flash_write", "flash_verify", "flash_done"];
+                _.each(bar_types, function(bar_type){
+                    $("#"+bar_type+"_progress").removeClass();
+                    $("#"+bar_type+"_progress").addClass("progress progress-info");
+                });
+            }
+
+            if(progress == "busy"){
+                $("#"+bar_type+"_progress").removeClass("progress-info");
+                $("#"+bar_type+"_progress").addClass("progress-striped progress-warning active");
+            }
+            if(progress == "done"){
+                $("#"+bar_type+"_progress").removeClass("progress-striped progress-warning active");
+                $("#"+bar_type+"_progress").addClass("progress-success");
             }
 
         };
