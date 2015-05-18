@@ -9,19 +9,19 @@ $(function() {
         // Variables that will be passed to avrdude
         self.hex_path = ko.observable(undefined);
         self.selected_port = ko.observable(undefined);
-        self.selected_baudrate = ko.observable(undefined);
         self.selected_board = ko.observableArray();
-        self.selected_programmer = ko.observable(undefined);
 
         self.flash_button = $("#settings-flash-arduino-start");
         self.upload_hex = $("#settings-flash-arduino");
 
 
         self.boards = [
-            {"value": {"board": "m2560", "programmer": "wiring"}, "text": gettext("ATmega2560 Leapfrog CreatrHS, Ultimaker 2, RAMPS 1.4")},
-            {"value": {"board": "m1280", "programmer": "arduino"}, "text": gettext("ATmega1280 Arduino Mega")},
-            {"value": {"board": "m328p", "programmer": "arduino"}, "text": gettext("Duemilanove /w ATmega328")},
-            {"value": {"board": "atmega168", "programmer": "arduino"}, "text": gettext("Duemilanove /w ATmega168")}
+            {"value": {"board": "m2560", "programmer": "wiring", "baudrate": "115200"}, "text": gettext("ATmega2560 Leapfrog CreatrHS, Ultimaker 2, RAMPS 1.4, RAMBo")},
+            {"value": {"board": "m1280", "programmer": "arduino", "baudrate": "57600"}, "text": gettext("ATmega1280 Arduino Mega")},
+            {"value": {"board": "m328p", "programmer": "arduino", "baudrate": "57600"}, "text": gettext("Duemilanove /w ATmega328")},
+            {"value": {"board": "atmega168", "programmer": "arduino", "baudrate": "19200"}, "text": gettext("Duemilanove /w ATmega168")},
+            {"value": {"board": "atmega1284p", "programmer": "stk500", "baudrate": "57600"}, "text": gettext("Sanguino /w ATmega1284P")},
+            {"value": {"board": "atmega644p", "programmer": "stk500", "baudrate": "57600"}, "text": gettext("Sanguino /w ATmega644P")}
         ];
 
         self.upload_hex.fileupload({
@@ -39,7 +39,7 @@ $(function() {
                         board: self.selected_board().board,
                         programmer: self.selected_board().programmer,
                         port: self.selected_port(),
-                        baudrate: self.selected_baudrate()
+                        baudrate: self.selected_board().baudrate
                     }; 
                     data.formData = flash_data;
                     data.submit();

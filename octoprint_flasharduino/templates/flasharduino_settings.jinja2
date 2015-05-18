@@ -28,21 +28,15 @@
 		    </div>
 		</div>
 		<div class="control-group">
-		   <label for="connection_ports_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Serial Port') }}</label>
-		    <div class="controls">
-		    	<select id="connection_ports_flash" data-bind="options: connection.portOptions, value: selected_port, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
-		    </div>
-		</div>
-		<div class="control-group">
-		    <label for="connection_baudrates_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Baud rate') }}</label>
-		    <div class="controls">
-		    	<select id="connection_baudrates_flash" data-bind="options: connection.baudrateOptions, value: selected_baudrate, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
-		    </div>
-		</div>
-		<div class="control-group">
 		    <label class="control-label">{{ _('Board') }}</label>
 		    <div class="controls">
 		        <select data-bind="options: boards, optionsText: 'text', optionsValue: 'value', value: selected_board"></select>
+		    </div>
+		</div>
+		<div class="control-group">
+		   <label for="connection_ports_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Serial Port') }}</label>
+		    <div class="controls">
+		    	<select id="connection_ports_flash" data-bind="options: connection.portOptions, value: selected_port, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
 		    </div>
 		</div>
 		<button class="btn btn-primary" id="settings-flash-arduino-start">{{ _('Flash') }}</button>
