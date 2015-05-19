@@ -167,7 +167,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				self._send_progress_update("done", "flash_verify")
 				self._send_progress_update("busy", "flash_done")
 				self._send_result_update("success")
-			done = re.search('avrdude done.', line)
+			done = 'avrdude' in line and 'done' in line
 			if done:
 				self._logger.debug("Flashing hex file done")
 				self._send_progress_update("done", "flash_done")
