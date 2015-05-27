@@ -20,7 +20,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
 		def bodysize_hook(self, current_max_body_sizes, *args, **kwargs):
 			return [
-				("POST", "/plugin/" + self._identifier + "/flash", 512 * 1024) # max upload size = 512KB
+				("POST","/flash", 512 * 1024) # max upload size = 512KB
 			]
 
 		##~~ AssetsPlugin
