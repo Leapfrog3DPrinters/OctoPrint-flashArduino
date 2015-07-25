@@ -22,6 +22,23 @@ $(function() {
             self.updateOutput();
         });
 
+        self.onDataUpdaterPluginMessage = function(plugin, data) {
+            if (plugin != "flasharduino") {
+                return;
+            }
+
+            if (!data.hasOwnProperty("type")) {
+                return;
+            }
+
+            var messageType = data.type;
+            if (messageType == "progress" && data.progress == "reset") {
+                self.log([]);
+            } else if (messageType == "loglines") {
+                self.appendLines(data.loglines);
+            }
+        };
+
         self.updateOutput = function() {
             if (self.autoscrollEnabled()) {
                 self.scrollToEnd();

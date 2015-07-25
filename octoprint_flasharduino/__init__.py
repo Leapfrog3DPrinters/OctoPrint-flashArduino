@@ -44,15 +44,16 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
                                                                    set_preprocessors=set_preprocessors)
                 return dict(settings=plugin_settings)
 
-            kwargs = dict(
+            variables = dict(
                 logger=self._logger,
                 plugin_manager=self._plugin_manager,
+                plugin=self
             )
 
             # inject the additional_injects
             for name, programmer in octoprint_flasharduino.config.programmers.items():
                 try:
-                    for arg, value in kwargs.items():
+                    for arg, value in variables.items():
                         setattr(programmer, "_" + arg, value)
 
                     programmer.initialize()
@@ -87,6 +88,20 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
         def get_settings_defaults(self):
             return dict()
 
+        def on_settings_load(self):
+            data = super(self.__class__, self).on_settings_load()
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                data[name] = programmer.on_settings_load()
+
+            return data
+
+        def on_settings_save(self, data):
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                programmer.on_settings_save(data[name])
+                del data[name]
+
+            super(self.__class__, self).on_settings_save(data)
+
         def get_template_configs(self):
             template_configs = [
                 dict(type="settings", template="flasharduino_settings.jinja2", custom_bindings=True),
@@ -117,7 +132,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
         @octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
         @restricted_access
         @admin_permission.require(403)
-        def flash_hex_file(self):
+        def flash_file(self):
             from shutil import copy2
             import tempfile
 
@@ -148,7 +163,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
                             self._logger.debug("Programmer not found $s" % flask.request.form["programmer"])
                             return flask.make_response("Programmer not found", 500)
 
-                        programmer.flash_hex_file(options)
+                        self._reset_progress(flask.request.form["programmer"])
+                        programmer.flash_file(options)
 
                 except Exception as e:
                     self._logger.exception("Error while copying file")
@@ -166,12 +182,33 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
             return flask.make_response("SUPER SUCCESS", 201)
 
         def allowed_file(self, filename):
-            ext = os.path.splitext(filename)[1]
+            allowed_exts = []
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                exts = programmer.allowed_extensions()
+                if exts is not None:
+                    allowed_exts = dict_list_merge(exts, allowed_exts)
+
+            ext = os.path.splitext(filename)[1][1:]
             self._logger.debug(ext)
-            return ext == ".hex"
+            return ext in allowed_exts
+
+        def _reset_progress(self, programmer):
+            self._send_progress_update(programmer=programmer, progress="reset", bar_type="all")
+
+        def _send_progress_update(self, programmer, progress, bar_type):
+            self._plugin_manager.send_plugin_message(self._identifier,
+                                                     dict(type="progress", programmer=programmer, progress=progress, bar_type=bar_type))
 
         def _send_result_update(self, programmer, result):
-            self._plugin_manager.send_plugin_message(self._identifier + "_" + programmer, dict(type="result", result=result))
+            self._plugin_manager.send_plugin_message(self._identifier, dict(type="result", programmer=programmer, result=result))
+
+        def _log(self, programmer, lines, prefix=None, stream=None, strip=True):
+            if strip:
+                lines = map(lambda x: x.strip(), lines)
+
+            self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", programmer=programmer,
+                                                                            loglines=[dict(line=line, stream=stream) for
+                                                                                      line in lines]))
 
 def dict_merge(a, b):
     from copy import deepcopy
@@ -183,6 +220,8 @@ def dict_merge(a, b):
                 result[k] = dict_list_merge(result[k], v)
             else:
                 result[k] = deepcopy(v)
+        else:
+            result[k] = deepcopy(v)
 
     return result
 

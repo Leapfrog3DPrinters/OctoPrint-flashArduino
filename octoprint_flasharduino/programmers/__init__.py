@@ -33,6 +33,22 @@ class Programmer(object):
     def get_settings_preprocessors(self):
         return dict(), dict()
 
+    def on_settings_load(self):
+        data = self._settings.get([], asdict=True, merged=True)
+        if "_config_version" in data:
+            del data["_config_version"]
+        return data
+
+    def on_settings_save(self, data):
+        import octoprint.util
+
+        if "_config_version" in data:
+            del data["_config_version"]
+
+        current = self._settings.get([], asdict=True, merged=True)
+        merged = octoprint.util.dict_merge(current, data)
+        self._settings.set([], merged)
+
     def get_settings_defaults(self):
         return None
 
@@ -42,8 +58,14 @@ class Programmer(object):
     def get_assets(self):
         return None
 
-    def flash_hex_file(self, options):
+    def flash_file(self, options):
         pass
+
+    def _check_progress(self, line):
+        pass
+
+    def allowed_extensions(self):
+        return []
 
     def register_board(self, text, options):
         options.update(programmer=self._identifier)
@@ -52,6 +74,28 @@ class Programmer(object):
             value=options
         )
         register_board(board)
+
+    def _log_stdout(self, *lines):
+        self._log(lines, prefix=">", stream="stdout")
+
+    def _log_stderr(self, *lines):
+        self._log(lines, prefix="!", stream="stderr")
+
+    def _log(self, lines, prefix=None, stream=None, strip=True):
+        self._plugin._log(self._identifier, lines, prefix=prefix, stream=stream, strip=strip)
+
+        for line in lines:
+            self._check_progress(line)
+            self._logger.debug(u"{prefix} {line}".format(**locals()))
+
+    def _reset_progress(self):
+        self._plugin._reset_progress()
+
+    def _send_progress_update(self, progress, bar_type):
+        self._plugin._send_progress_update(programmer=self._identifier, progress=progress, bar_type=bar_type)
+
+    def _send_result_update(self, result):
+        self._plugin._send_result_update(programmer=self._identifier, result=result)
 
 # copy pasted from OctoPrints PluginSettings
 class ProgrammerSettings(object):
@@ -232,4 +276,4 @@ class ProgrammerSettings(object):
         return getattr(self.settings, item)
 
 
-from . import avrdude
+from . import avrdude, bossac

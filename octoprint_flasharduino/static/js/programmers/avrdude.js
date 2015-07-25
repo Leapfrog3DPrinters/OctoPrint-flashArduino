@@ -6,7 +6,6 @@ $(function() {
         var self = this;
 
         self.settingsViewModel = parameters[0];
-        self.terminalViewModel = parameters[1];
 
         self._displayNotification = function(response) {
             if (response == "success") {
@@ -47,12 +46,12 @@ $(function() {
         };
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
-            if (plugin != "avrdude" && plugin != "flasharduino_avrdude") {
+            if (plugin != "flasharduino") {
                 return;
             }
 
-            if (!data.hasOwnProperty("type")) {
-                return;
+            if (!data.hasOwnProperty("programmer") || data["programmer"] != "avrdude" || !data.hasOwnProperty("type")) {
+                    return;
             }
 
             var messageType = data.type;
@@ -61,18 +60,13 @@ $(function() {
                 var bar_type = data.bar_type;
 
                 self.bar_progress(bar_type, progress);
-
-
             } else if (messageType == "result") {
                 var result = data.result
                 self._displayNotification(result);
                 window.setTimeout(function() {
                     $('#status_plugin_flasharduino_avrdude').removeClass('active');
                 }, 1000);
-            } else if (messageType == "loglines") {
-                self.terminalViewModel.appendLines(data.loglines);
             }
-
         };
 
         self.onBeforeBinding = function () {
@@ -84,7 +78,7 @@ $(function() {
     // information to the global variable ADDITIONAL_VIEWMODELS
     ADDITIONAL_VIEWMODELS.push([
         AvrdudeViewModel,
-        ["settingsViewModel", "flashArduinoTerminalViewModel"],
+        ["settingsViewModel"],
         ["#settings_plugin_flasharduino_avrdude", "#status_plugin_flasharduino_avrdude"]
     ]);
 });

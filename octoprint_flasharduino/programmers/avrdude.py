@@ -31,11 +31,9 @@ class AVRDudeProgrammer(Programmer):
            dict(type="plugin_flasharduino_status", template="programmers/avrdude/avrdude_status.jinja2", custom_bindings=True)
        ]
 
-    def flash_hex_file(self, options):
+    def flash_file(self, options):
         if options is None:
             return
-
-        self._reset_progress()
 
         ## Create list with arguments for avrdude from the POST in formData
         args = []
@@ -61,6 +59,9 @@ class AVRDudeProgrammer(Programmer):
         file_args = "-U flash:w:" + options["hex_path"] + ":i -D"
         args.append(file_args)
         self._call_avrdude(args)
+
+    def allowed_extensions(self):
+        return [ "hex" ]
 
     # Shameless copy + alteration from PluginManager
     def _call_avrdude(self, args):
@@ -127,33 +128,6 @@ class AVRDudeProgrammer(Programmer):
         if done:
             self._logger.debug("Flashing hex file done")
             self._send_progress_update("done", "flash_done")
-
-    def _log_stdout(self, *lines):
-        self._log(lines, prefix=">", stream="stdout")
-
-    def _log_stderr(self, *lines):
-        self._log(lines, prefix="!", stream="stderr")
-
-    def _log(self, lines, prefix=None, stream=None, strip=True):
-        if strip:
-            lines = map(lambda x: x.strip(), lines)
-
-        self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines",
-                                                                        loglines=[dict(line=line, stream=stream) for
-                                                                                  line in lines]))
-        for line in lines:
-            self._check_progress(line)
-            self._logger.debug(u"{prefix} {line}".format(**locals()))
-
-    def _reset_progress(self):
-        self._send_progress_update("reset", "all")
-
-    def _send_progress_update(self, progress, bar_type):
-        self._plugin_manager.send_plugin_message(self._identifier,
-                                                 dict(type="progress", progress=progress, bar_type=bar_type))
-
-    def _send_result_update(self, result):
-        self._plugin_manager.send_plugin_message(self._identifier, dict(type="result", result=result))
 
 
 register_programmer(AVRDudeProgrammer("avrdude"))
