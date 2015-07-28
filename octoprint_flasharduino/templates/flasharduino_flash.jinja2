@@ -1,0 +1,53 @@
+<div class="span5">
+	<div class="control-group">
+	    <label class="control-label">{{ _('Hex file') }}</label>
+	    <div class="input-prepend">
+		    <span class="btn fileinput-button">
+		        <span>{{ _('Browse...') }}</span>
+		        <input id="settings-flash-arduino" type="file" name="file" data-url="{{ url_for("plugin.flasharduino.flash_file") }}">
+		    </span>
+	        <span class="add-on" data-bind="text: hex_path" style="max-width: 65%; text-overflow: ellipsis; overflow: hidden;"></span>
+	    </div>
+	</div>
+	<div class="control-group">
+	    <label class="control-label">{{ _('Board') }}</label>
+	    <div class="controls">
+	        <select data-bind="options: boards, optionsText: 'text', optionsValue: 'value', value: selected_board"></select>
+	    </div>
+	</div>
+	<div class="control-group">
+	   <label for="connection_ports_flash" data-bind="css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Serial Port') }}</label>
+	    <div class="controls">
+	    	<select id="connection_ports_flash" data-bind="options: connection.portOptions, value: selected_port, css: {disabled: !connection.isErrorOrClosed()}, enable: connection.isErrorOrClosed() && loginState.isUser()"></select>
+	    </div>
+	</div>
+	<button class="btn btn-block" id="printer_connect_flash" data-bind="click: connection.connect, text: connection.buttonText(), enable: loginState.isUser()">{{ _('Connect') }}</button>
+	<button class="btn btn-block btn-primary" id="settings-flash-arduino-start" data-bind="enable: connection.isErrorOrClosed() && loginState.isUser()">{{ _('Flash') }}</button>
+</div>
+<div class="span5">
+    <div class="tab-content">
+    {% for key in templates.plugin_flasharduino_status.order %}
+        {% set entry, data = templates.plugin_flasharduino_status.entries[key] %}
+        {% if data is not none %}
+            {% if "custom_bindings" not in data or data["custom_bindings"] %}<!-- ko allowBindings: false -->{% endif %}
+            <div id="{{ data._div }}"
+                 {% if "data_bind" in data %}data-bind="{{ data.data_bind }}"{% endif %}
+                 class="tab-pane {% if classes_content in data %}{{ data.classes_content|join(' ') }}{% elif classes in data %}{{ data.classes|join(' ') }}{% endif %}"
+                 {% if "styles_content" in data %} style="{{ data.styles_content|join(', ') }}" {% elif styles in data %} style="{{ data.styles|join(', ') }}" {% endif %}
+                    >
+                {% include data.template ignore missing %}
+            </div>
+            {% if "custom_bindings" not in data or data["custom_bindings"] %}<!-- /ko -->{% endif %}
+        {% endif %}
+    {% endfor %}
+    </div>
+</div>
+<!-- ko allowBindings: false -->
+<div class="span11" style="margin: 10px 0px">
+    <div class="flasharduino-terminal" id="settings_plugin_flasharduino_terminal" data-bind="allowBindings: true">
+        <pre id="flasharduino-terminal-output" class="pre-scrollable" style="height: 220px;" data-bind="foreach: displayedLines"><span data-bind="text: line"></span><br></pre>
+        <small class="pull-left"><button class="btn btn-mini" data-bind="click: toggleAutoscroll, css: {active: autoscrollEnabled}">{{ _('Autoscroll') }}</button></small>
+        <small class="pull-right"><a href="#" data-bind="click: scrollToEnd">{{ _("Scroll to end") }}</a></small>
+    </div>
+</div>
+<!-- /ko -->

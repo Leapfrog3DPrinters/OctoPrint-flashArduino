@@ -1,207 +1,246 @@
 # coding=utf-8
 from __future__ import absolute_import
 
+import os
+
 import flask
-import logging
-import sarge
-import logging.handlers
+
 import octoprint.plugin
 import octoprint.settings
-import re
-import os
+import octoprint_flasharduino.config
+
+from octoprint.server.util.flask import restricted_access
+from octoprint.server import admin_permission
+
+from . import programmers
 
 ##~~ Init Plugin and Metadata
 
-
 class FlashArduino(octoprint.plugin.TemplatePlugin,
-			  	   octoprint.plugin.AssetPlugin,
-			       octoprint.plugin.SettingsPlugin,
-			       octoprint.plugin.BlueprintPlugin):
+                   octoprint.plugin.AssetPlugin,
+                   octoprint.plugin.SettingsPlugin,
+                   octoprint.plugin.BlueprintPlugin):
 
-		def bodysize_hook(self, current_max_body_sizes, *args, **kwargs):
-			return [
-				("POST","/flash", 512 * 1024) # max upload size = 512KB
-			]
+        def bodysize_hook(self, current_max_body_sizes, *args, **kwargs):
+            return [
+                ("POST","/flash", 512 * 1024) # max upload size = 512KB
+            ]
 
-		##~~ AssetsPlugin
-		def get_assets(self):
-			return dict(
-				js=["js/flasharduino.js"],
-				css=["css/flasharduino.css"]
-			)
+        def templatehook(self, *args, **kwargs):
+            return [
+                ('settings', dict(), dict(div=lambda x: "settings_plugin_" + x, template=lambda x: x + "_programmersettings.jinja2")),
+                ('status', dict(), dict(div=lambda x: "status_plugin_" + x, template=lambda x: x + "_status.jinja2")),
 
-		##~~ Set default settings
-		def get_settings_defaults(self):
-			return dict(avrdude_path=None,
-			            avrdude_conf=None)
+            ]
 
+        def initialize(self):
+            def settings_plugin_inject_factory(programmer):
+                default_settings = programmer.get_settings_defaults()
+                get_preprocessors, set_preprocessors = programmer.get_settings_preprocessors()
+                plugin_settings = programmers.programmer_settings(self._settings.plugin_key,
+                                                                   programmer._identifier,
+                                                                   defaults=default_settings,
+                                                                   get_preprocessors=get_preprocessors,
+                                                                   set_preprocessors=set_preprocessors)
+                return dict(settings=plugin_settings)
 
-		def get_template_configs(self):
-			return [
-				dict(type="settings", template="flasharduino_settings.jinja2", custom_bindings=True)
-			]
+            variables = dict(
+                logger=self._logger,
+                plugin_manager=self._plugin_manager,
+                plugin=self
+            )
 
-		## Blueprint Plugin
-		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
-		def flash_hex_file(self):
-			import datetime
-			from shutil import copy2
-			import tempfile
+            # inject the additional_injects
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                try:
+                    for arg, value in variables.items():
+                        setattr(programmer, "_" + arg, value)
 
-			## Reset UI
-			self._reset_progress()
+                    programmer.initialize()
+                except Exception as e:
+                    self._logger.exception("Exception while initializing %s" % name)
 
-			## Create list with arguments for avrdude from the POST in formData
-			args = []
-			if "board" in flask.request.form:
-				board_arg = "-p " + flask.request.form['board']
-				args.append(board_arg)
-			if "programmer" in flask.request.form:
-				programmer_arg = "-c " + flask.request.form['programmer']
-				args.append(programmer_arg)
-			if "port" in flask.request.form:
-				port_arg = "-P " + flask.request.form['port']
-				args.append(port_arg)
-			if "baudrate" in flask.request.form:
-				baudrate_arg = "-b " + flask.request.form['baudrate']
-				args.append(baudrate_arg)
-			avrdude_conf = self._settings.get(["avrdude_conf"])
-			if avrdude_conf is not None:
-				conf_arg = '-C"%s"' % avrdude_conf
-				args.append(conf_arg)
-			self._logger.debug(args)
+                try:
+                    return_value = settings_plugin_inject_factory(programmer)
+                except:
+                    self._logger.exception("Exception while executing settings_plugin_inject_factory")
+                else:
+                    if return_value is not None:
+                        if isinstance(return_value, dict):
+                            for arg, value in return_value.items():
+                                setattr(programmer, "_" + arg, value)
 
-			## Tornado hack
-			input_name = "file"
-			input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
-			input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
-			hex_path = flask.request.values[input_upload_path]
-			ext_path = flask.request.values[input_upload_name]
+        ##~~ AssetsPlugin
+        def get_assets(self):
+            assets = dict(
+                js=["js/flasharduino_terminal.js", "js/flasharduino.js"],
+                css=["css/flasharduino.css"]
+            )
 
-			## Upload the hexfile and try to flash the file. 
-			if input_upload_name in flask.request.values and input_upload_path in flask.request.values and self.allowed_file(ext_path):
-				temp_file = tempfile.NamedTemporaryFile(delete=False)
-				try:
-					temp_file.close()
-					copy2(hex_path, temp_file.name)
-					self._logger.debug("File created with name %s" % temp_file.name)
-					hex_path = temp_file.name
-					file_args = "-U flash:w:" + hex_path + ":i -D"
-					args.append(file_args)
-					self._call_avrdude(args)
-				except Exception as e:
-					self._logger.exception("Error while copying file")
-					return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
-				finally:
-					os.remove(temp_file.name)
-					self._logger.debug("File deleted with name %s" % temp_file.name)
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                programmer_assets = programmer.get_assets()
+                if programmer_assets is not None:
+                    assets = dict_list_merge(assets, programmer_assets)
 
-			else:
-				self._logger.warn("No .hex file included for flashing, aborting")
-				self._send_result_update("failed")
-				return flask.make_response("No .hex file included", 400)
+            return assets
 
-			return flask.make_response("SUPER SUCCESS", 201)
+        ##~~ Set default settings
+        def get_settings_defaults(self):
+            return dict()
 
-		def allowed_file(self, filename):
-			ext = os.path.splitext(filename)[1]
-			self._logger.debug(ext)
-			return (ext == ".hex")
+        def on_settings_load(self):
+            data = super(self.__class__, self).on_settings_load()
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                data[name] = programmer.on_settings_load()
 
-		#Shameless copy + alteration from PLuginManager
-		def _call_avrdude(self, args):
-			avrdude_command = self._settings.get(["avrdude_path"])
-			if avrdude_command is None:
-				#This needs the more thorough checking like the pip stuff in pluginmanager
-				raise RuntimeError(u"No avrdude path configured and {avrdude_command} does not exist or is not executable, can't install".format(**locals()))
+            return data
 
-			command = ['"%s"' % avrdude_command] + args
+        def on_settings_save(self, data):
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                programmer.on_settings_save(data[name])
+                del data[name]
 
-			self._logger.debug(u"Calling: {}".format(" ".join(command)))
+            super(self.__class__, self).on_settings_save(data)
 
-			p = sarge.run(" ".join(command), shell=True, async=True, stdout=sarge.Capture(), stderr=sarge.Capture())
-			p.wait_events()
+        def get_template_configs(self):
+            template_configs = [
+                dict(type="settings", template="flasharduino_settings.jinja2", custom_bindings=True),
+                dict(type="plugin_flasharduino_settings", suffix="_main", template="flasharduino_flash.jinja2", custom_bindings=False)
+            ]
 
-			try:
-				while p.returncode is None:
-					line = p.stderr.readline()
-					if line:
-						self._log_stderr(line)
-					line = p.stdout.readline()
-					if line:
-						self._log_stdout(line)
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                programmer_template_configs = programmer.get_template_configs()
+                if programmer_template_configs is not None:
+                    for k in programmer_template_configs:
+                        update = dict(suffix="_"+programmer._identifier)
+                        if "name" not in k:
+                            update["name"] = programmer._identifier
 
-					p.commands[0].poll()
+                        k.update(update)
 
-			finally:
-				p.close()
+                    template_configs = dict_list_merge(template_configs, programmer_template_configs)
 
-			stderr = p.stderr.text
-			if stderr:
-				self._log_stderr(*stderr.split("\n"))
+            return template_configs
 
-			stdout = p.stdout.text
-			if stdout:
-				self._log_stdout(*stdout.split("\n"))
+        ## Blueprint Plugin
+        @octoprint.plugin.BlueprintPlugin.route("/boards", methods=["GET"])
+        @restricted_access
+        @admin_permission.require(403)
+        def getBoardList(self):
+            return flask.jsonify(boards=octoprint_flasharduino.config.boards)
 
-			return p.returncode
+        @octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
+        @restricted_access
+        @admin_permission.require(403)
+        def flash_file(self):
+            from shutil import copy2
+            import tempfile
 
-		def _check_progress(self, line):
-			initialized = re.search('initialized', line)
-			if initialized:
-				self._logger.debug("Device initialized")
-				self._send_progress_update("busy", "flash_read")
-			read = re.search('reading input', line)
-			if read: 
-				self._logger.debug("Hex file read")
-				self._send_progress_update("done", "flash_read")
-				self._send_progress_update("busy", "flash_write")
-			written = re.search('flash written', line)
-			if written:
-				self._logger.debug("Hex file written to flash")
-				self._send_progress_update("done", "flash_write")
-				self._send_progress_update("busy", "flash_verify")
-			verified = re.search('flash verified', line)
-			if verified:
-				self._logger.debug("Hex file verified on flash")
-				self._send_progress_update("done", "flash_verify")
-				self._send_progress_update("busy", "flash_done")
-				self._send_result_update("success")
-			done = 'avrdude' in line and 'done' in line
-			if done:
-				self._logger.debug("Flashing hex file done")
-				self._send_progress_update("done", "flash_done")
+            ## Tornado hack
+            input_name = "file"
+            input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
+            input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+            hex_path = flask.request.values[input_upload_path]
+            ext_path = flask.request.values[input_upload_name]
 
-		def _reset_progress(self):
-			self._send_progress_update("reset", "all")
+            ## Upload the hexfile and try to flash the file.
+            if input_upload_name in flask.request.values and input_upload_path in flask.request.values and self.allowed_file(ext_path):
+                temp_file = tempfile.NamedTemporaryFile(delete=False)
+                try:
+                    temp_file.close()
+                    copy2(hex_path, temp_file.name)
+                    self._logger.debug("File created with name %s" % temp_file.name)
 
-		def _send_progress_update(self, progress, bar_type):
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="progress", progress=progress, bar_type=bar_type))
+                    options=dict(
+                        hex_path=temp_file.name,
+                        **flask.request.form.to_dict(True)
+                    )
 
-		def _send_result_update(self, result):
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="result", result=result))			
+                    ## TODO: get Programmer and call upload
+                    if "programmer" in flask.request.form:
+                        programmer = octoprint_flasharduino.config.get_programmer(flask.request.form["programmer"])
+                        if programmer is None:
+                            self._logger.debug("Programmer not found $s" % flask.request.form["programmer"])
+                            return flask.make_response("Programmer not found", 500)
 
-		def _log_stdout(self, *lines):
-			self._log(lines, prefix=">", stream="stdout")
+                        self._reset_progress(flask.request.form["programmer"])
+                        programmer.flash_file(options)
 
-		def _log_stderr(self, *lines):
-			self._log(lines, prefix="!", stream="stderr")
+                except Exception as e:
+                    self._logger.exception("Error while copying file")
+                    return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
+                finally:
+                    os.remove(temp_file.name)
+                    self._logger.debug("File deleted with name %s" % temp_file.name)
 
-		def _log(self, lines, prefix=None, stream=None, strip=True):
-			if strip:
-				lines = map(lambda x: x.strip(), lines)
+            else:
+                self._logger.warn("No .hex file included for flashing, aborting")
+                if "programmer" in flask.request.form:
+                    self._send_result_update(flask.request.form["programmer"], "failed")
+                return flask.make_response("No .hex file included", 400)
 
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", loglines=[dict(line=line, stream=stream) for line in lines]))
-			for line in lines:
-				self._check_progress(line)
-				self._logger.debug(u"{prefix} {line}".format(**locals()))
+            return flask.make_response("SUPER SUCCESS", 201)
+
+        def allowed_file(self, filename):
+            allowed_exts = []
+            for name, programmer in octoprint_flasharduino.config.programmers.items():
+                exts = programmer.allowed_extensions()
+                if exts is not None:
+                    allowed_exts = dict_list_merge(exts, allowed_exts)
+
+            ext = os.path.splitext(filename)[1][1:]
+            self._logger.debug(ext)
+            return ext in allowed_exts
+
+        def _reset_progress(self, programmer):
+            self._send_progress_update(programmer=programmer, progress="reset", bar_type="all")
+
+        def _send_progress_update(self, programmer, progress, bar_type):
+            self._plugin_manager.send_plugin_message(self._identifier,
+                                                     dict(type="progress", programmer=programmer, progress=progress, bar_type=bar_type))
+
+        def _send_result_update(self, programmer, result):
+            self._plugin_manager.send_plugin_message(self._identifier, dict(type="result", programmer=programmer, result=result))
+
+        def _log(self, programmer, lines, prefix=None, stream=None, strip=True):
+            if strip:
+                lines = map(lambda x: x.strip(), lines)
+
+            self._plugin_manager.send_plugin_message(self._identifier, dict(type="loglines", programmer=programmer,
+                                                                            loglines=[dict(line=line, stream=stream) for
+                                                                                      line in lines]))
+
+def dict_merge(a, b):
+    from copy import deepcopy
+
+    result = deepcopy(a)
+    for k, v in b.iteritems():
+        if k in result:
+            if isinstance(result[k], dict) or isinstance(result[k], list):
+                result[k] = dict_list_merge(result[k], v)
+            else:
+                result[k] = deepcopy(v)
+        else:
+            result[k] = deepcopy(v)
+
+    return result
+
+def dict_list_merge(a, b):
+    if isinstance(a, dict) and isinstance(b, dict):
+        return dict_merge(a, b)
+
+    if isinstance(a, list) and isinstance(b, list):
+        return a + b
+
+    return None
 
 __plugin_name__ = "Flash Arduino"
 def __plugin_load__():
-	global __plugin_implementation__
-	__plugin_implementation__ = FlashArduino()
+    global __plugin_implementation__
+    __plugin_implementation__ = FlashArduino()
 
-	global __plugin_hooks__
-	__plugin_hooks__ = {
-		"octoprint.server.http.bodysize": __plugin_implementation__.bodysize_hook
-	}
+    global __plugin_hooks__
+    __plugin_hooks__ = {
+        "octoprint.server.http.bodysize": __plugin_implementation__.bodysize_hook,
+        "octoprint.ui.web.templatetypes": __plugin_implementation__.templatehook
+    }
