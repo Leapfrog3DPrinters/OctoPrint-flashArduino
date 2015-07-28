@@ -276,4 +276,4 @@ class ProgrammerSettings(object):
         return getattr(self.settings, item)
 
 
-from . import avrdude
+from . import avrdude, bossac
