@@ -36,7 +36,7 @@ plugin_license = "AGPLv3"
 
 # Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
 # already be installed automatically if they exist.
-plugin_additional_data = []
+plugin_additional_data = ["programmers"]
 
 ########################################################################################################################
 
