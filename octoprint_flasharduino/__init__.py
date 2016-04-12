@@ -27,19 +27,12 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 		def get_assets(self):
 			return dict(
 				js=["js/flasharduino.js"],
-				css=["css/flasharduino.css"]
 			)
 
 		##~~ Set default settings
 		def get_settings_defaults(self):
 			return dict(avrdude_path=None,
 			            avrdude_conf=None)
-
-
-		def get_template_configs(self):
-			return [
-				dict(type="settings", template="flasharduino_settings.jinja2", custom_bindings=True)
-			]
 
 		## Blueprint Plugin
 		@octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
@@ -88,6 +81,9 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 					hex_path = temp_file.name
 					file_args = "-U flash:w:" + hex_path + ":i -D"
 					args.append(file_args)
+					connection_info = self._printer.get_current_connection()
+					self._logger.debug(connection_info)
+					self._printer.disconnect()
 					self._call_avrdude(args)
 				except Exception as e:
 					self._logger.exception("Error while copying file")
@@ -95,6 +91,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 				finally:
 					os.remove(temp_file.name)
 					self._logger.debug("File deleted with name %s" % temp_file.name)
+					self._printer.connect(connection_info[1], connection_info[2])
 
 			else:
 				self._logger.warn("No .hex file included for flashing, aborting")

@@ -11,18 +11,10 @@ $(function() {
         self.selected_port = ko.observable(undefined);
         self.selected_board = ko.observableArray();
 
+        self.flash_enable = ko.observable(false);
+
         self.flash_button = $("#settings-flash-arduino-start");
         self.upload_hex = $("#settings-flash-arduino");
-
-
-        self.boards = [
-            {"value": {"board": "m2560", "programmer": "wiring", "baudrate": "115200"}, "text": gettext("ATmega2560 Leapfrog CreatrHS, Ultimaker 2, RAMPS 1.4, RAMBo")},
-            {"value": {"board": "m1280", "programmer": "arduino", "baudrate": "57600"}, "text": gettext("ATmega1280 Arduino Mega")},
-            {"value": {"board": "m328p", "programmer": "arduino", "baudrate": "57600"}, "text": gettext("Duemilanove /w ATmega328")},
-            {"value": {"board": "atmega168", "programmer": "arduino", "baudrate": "19200"}, "text": gettext("Duemilanove /w ATmega168")},
-            {"value": {"board": "atmega1284p", "programmer": "stk500", "baudrate": "57600"}, "text": gettext("Sanguino /w ATmega1284P")},
-            {"value": {"board": "atmega644p", "programmer": "stk500", "baudrate": "57600"}, "text": gettext("Sanguino /w ATmega644P")}
-        ];
 
         self.upload_hex.fileupload({
             dataType: "json",
@@ -33,13 +25,14 @@ $(function() {
                     return false;
                 }
                 self.hex_path(data.files[0].name);
+                self.flash_enable(true);
                 self.flash_button.unbind("click");
                 self.flash_button.on("click", function() {
                     var flash_data = {
-                        board: self.selected_board().board,
-                        programmer: self.selected_board().programmer,
-                        port: self.selected_port(),
-                        baudrate: self.selected_board().baudrate
+                        board: "m2560",
+                        programmer: "wiring",
+                        port: "/dev/cu.usbserial-A6043R0F", ///dev/ttyUSB0
+                        baudrate: "115200"
                     }; 
                     data.formData = flash_data;
                     data.submit();
@@ -52,19 +45,17 @@ $(function() {
 
         self._displayNotification = function(response) {
             if (response == "success") {
-                new PNotify({
-                    title: gettext("Flashing firmware succeeded"),
-                    text: gettext("Congratulations flashing the firmware was a success!"),
-                    type: "success",
-                    hide: false
-                })
+                $.notify({
+                    title: "Flashing firmware success!",
+                    text: _.sprintf(gettext('Flashed "%(filename)s" with success'), {filename: self.hex_path()})},
+                    "success"
+                );
             } else {
-                new PNotify({
-                    title: gettext("Something went wrong"),
-                    text: gettext("Flashing the firmware failed, please see the log for details"),
-                    type: "error",
-                    hide: false
-                });
+                $.notify({
+                    title: "Flashing firmware error!",
+                    text: _.sprintf(gettext('An error occured while flashing "%(filename)s". Please check logs.'), {filename: self.hex_path()})},
+                    "error"
+                );
             }
         };
 
@@ -73,17 +64,20 @@ $(function() {
                 var bar_types = ["flash_read", "flash_write", "flash_verify", "flash_done"];
                 _.each(bar_types, function(bar_type){
                     $("#"+bar_type+"_progress").removeClass();
-                    $("#"+bar_type+"_progress").addClass("progress progress-info");
+                    $("#"+bar_type+"_progress").addClass("bg-none");
                 });
             }
 
             if(progress == "busy"){
-                $("#"+bar_type+"_progress").removeClass("progress-info");
-                $("#"+bar_type+"_progress").addClass("progress-striped progress-warning active");
+                $("#"+bar_type+"_progress").removeClass("bg-none");
+                $("#"+bar_type+"_progress").addClass("bg-yellow");
+                $("#"+bar_type+"_progress").parent().addClass("progress-striped progress-animate");
+
             }
             if(progress == "done"){
-                $("#"+bar_type+"_progress").removeClass("progress-striped progress-warning active");
-                $("#"+bar_type+"_progress").addClass("progress-success");
+                $("#"+bar_type+"_progress").parent().removeClass("progress-striped progress-animate");
+                $("#"+bar_type+"_progress").removeClass("bg-yellow");
+                $("#"+bar_type+"_progress").addClass("bg-green");
             }
 
         };
@@ -109,6 +103,7 @@ $(function() {
             } else if (messageType == "result") {
                 var result = data.result
                 self._displayNotification(result);
+                self.flash_enable(false);
             }
 
         };
@@ -130,6 +125,6 @@ $(function() {
         ["settingsViewModel", "loginStateViewModel", "connectionViewModel"],
 
         // Finally, this is the list of all elements we want this view model to be bound to.
-        ["#settings_plugin_flasharduino"]
+        ["#flash_arduino"]
     ]);
 });
