@@ -31,7 +31,7 @@ $(function() {
                     var flash_data = {
                         board: "m2560",
                         programmer: "wiring",
-                        port: "/dev/cu.usbserial-A6043R0F", ///dev/ttyUSB0
+                        port: "/dev/ttyUSB0",
                         baudrate: "115200"
                     }; 
                     data.formData = flash_data;
