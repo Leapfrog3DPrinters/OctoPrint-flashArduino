@@ -11,10 +11,40 @@ $(function() {
         self.selected_port = ko.observable(undefined);
         self.selected_board = ko.observableArray();
 
+        self.flashingAllowed = ko.observable(false);
         self.flash_enable = ko.observable(false);
+        self.port = ko.observable(undefined);
 
         self.flash_button = $("#settings-flash-arduino-start");
         self.upload_hex = $("#settings-flash-arduino");
+
+        self.resetFile = function ()
+        {
+            self.hex_path(undefined);
+            self.flash_enable(false);
+            self.flash_button.unbind("click");
+        }
+
+        self.onLocalFileSelected = function (file) {
+            self.hex_path(file.name);
+            self.flash_enable(true);
+            self.flash_button.unbind("click");
+            self.flash_button.on("click", function () {
+                if (self.flashingAllowed()) {
+                    $.post('/plugin/flasharduino/flash', {
+                        local_path: file.refs.local_path,
+                        board: "m2560",
+                        programmer: "wiring",
+                        port: "/dev/ttyUSB0",
+                        baudrate: "115200"
+                    });
+                }
+                else
+                {
+                    $.notify({ title: 'Cannot flash firmware', text: 'Cannot flash the firmware at this moment. Please cancel your print first.' }, 'error');
+                }
+            });
+        };
 
         self.upload_hex.fileupload({
             dataType: "json",
@@ -27,21 +57,29 @@ $(function() {
                 self.hex_path(data.files[0].name);
                 self.flash_enable(true);
                 self.flash_button.unbind("click");
-                self.flash_button.on("click", function() {
-                    var flash_data = {
-                        board: "m2560",
-                        programmer: "wiring",
-                        port: "/dev/ttyUSB0",
-                        baudrate: "115200"
-                    }; 
-                    data.formData = flash_data;
-                    data.submit();
+                self.flash_button.on("click", function () {
+
+                    if (self.flashingAllowed()) {
+                        var flash_data = {
+                            board: "m2560",
+                            programmer: "wiring",
+                            port: "/dev/ttyUSB0",
+                            baudrate: "115200"
+                        };
+                        data.formData = flash_data;
+                        data.submit();
+                    }
+                    else
+                    {
+                        $.notify({ title: 'Cannot flash firmware', text: 'Cannot flash the firmware at this moment. Please cancel your print first.' }, 'error');
+                    }
                 });
             },
             done: function(e, data) {
                 return;
             }
         });
+
 
         self._displayNotification = function(response) {
             if (response == "success") {
@@ -112,6 +150,11 @@ $(function() {
             self.settings = self.settingsViewModel.settings;
         };
 
+        self.onAfterBinding = function()
+        {
+            //self.update.selectedLocalFirmwareFile.subscribe(self.onLocalFileSelected);
+        }
+
      }
     // This is how our plugin registers itself with the application, by adding some configuration
     // information to the global variable ADDITIONAL_VIEWMODELS
@@ -125,6 +168,6 @@ $(function() {
         ["settingsViewModel", "loginStateViewModel", "connectionViewModel"],
 
         // Finally, this is the list of all elements we want this view model to be bound to.
-        ["#flash_arduino"]
+        []
     ]);
 });
