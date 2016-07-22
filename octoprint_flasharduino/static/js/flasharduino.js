@@ -31,17 +31,23 @@ $(function() {
             self.flash_button.unbind("click");
             self.flash_button.on("click", function () {
                 if (self.flashingAllowed()) {
+                    self.flash_enable(false);
                     $.post('/plugin/flasharduino/flash', {
                         local_path: file.refs.local_path,
                         board: "m2560",
                         programmer: "wiring",
                         port: "/dev/ttyUSB0",
                         baudrate: "115200"
+                    }).fail(function()
+                    {
+                        $.notify({ title: 'Cannot flash firmware', text: 'Cannot flash the firmware at this moment. Please check the connection and try again.' }, 'error');
+                        self.flash_enable(true);
                     });
                 }
                 else
                 {
                     $.notify({ title: 'Cannot flash firmware', text: 'Cannot flash the firmware at this moment. Please cancel your print first.' }, 'error');
+                    self.flash_enable(true);
                 }
             });
         };
@@ -60,6 +66,7 @@ $(function() {
                 self.flash_button.on("click", function () {
 
                     if (self.flashingAllowed()) {
+                        self.flash_enable(false);
                         var flash_data = {
                             board: "m2560",
                             programmer: "wiring",
@@ -141,7 +148,7 @@ $(function() {
             } else if (messageType == "result") {
                 var result = data.result
                 self._displayNotification(result);
-                self.flash_enable(false);
+                self.resetFile();
             }
 
         };
