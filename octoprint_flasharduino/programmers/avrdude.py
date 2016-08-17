@@ -51,8 +51,8 @@ class AVRDudeProgrammer(Programmer):
             baudrate_arg = "-b " + options['baudrate']
             args.append(baudrate_arg)
 
-        avrdude_conf = self._settings.get(["avrdude_conf"])
-        if avrdude_conf is not None:
+        avrdude_conf = self._settings.get(["avrdude_conf"], "")
+        if avrdude_conf != "":
             conf_arg = '-C"%s"' % avrdude_conf
             args.append(conf_arg)
         self._logger.debug(args)
