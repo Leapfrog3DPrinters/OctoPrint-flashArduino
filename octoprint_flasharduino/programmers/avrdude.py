@@ -15,6 +15,7 @@ class AVRDudeProgrammer(Programmer):
         self.register_board(gettext("Duemilanove /w ATmega16"), dict(board="atmega168", protocol="arduino", baudrate="19200"))
         self.register_board(gettext("Sanguino /w ATmega1284P"), dict(board="atmega1284p", protocol="stk500", baudrate="57600"))
         self.register_board(gettext("Sanguino /w ATmega644P"), dict(board="atmega644p", protocol="stk500", baudrate="57600"))
+        self.register_board(gettext("PrintrBoard"), dict(board="usb1286", protocol="avr109", baudrate="115200"))
 
     def get_assets(self):
         return dict(
@@ -51,7 +52,7 @@ class AVRDudeProgrammer(Programmer):
             args.append(baudrate_arg)
 
         avrdude_conf = self._settings.get(["avrdude_conf"])
-        if avrdude_conf is not None:
+        if avrdude_conf is not None and avrdude_conf != "":
             conf_arg = '-C"%s"' % avrdude_conf
             args.append(conf_arg)
         self._logger.debug(args)
