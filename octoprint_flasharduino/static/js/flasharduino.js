@@ -18,6 +18,8 @@ $(function() {
         self.flash_button = $("#settings-flash-arduino-start");
         self.upload_hex = $("#settings-flash-arduino");
 
+        self.flashing_complete_callback = undefined;
+
         self.resetFile = function ()
         {
             self.hex_path(undefined);
@@ -102,6 +104,9 @@ $(function() {
                     "error"
                 );
             }
+
+            if (self.flashing_complete_callback  !== undefined)
+                self.flashing_complete_callback(response == "success")
         };
 
         self.bar_progress = function(bar_type, progress) {
