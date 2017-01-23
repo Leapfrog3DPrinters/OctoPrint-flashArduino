@@ -48,17 +48,18 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
             hex_path = None
             ext_path = None
 
+            input_name = "file"
+            input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
+            input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+
             if "local_path" in flask.request.values:
                 hex_path = flask.request.values["local_path"]
                 ext_path = os.path.basename(hex_path)
             elif input_upload_name in flask.request.values and input_upload_path in flask.request.values:
-                input_name = "file"
-                input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
-                input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
                 hex_path = flask.request.values[input_upload_path]
                 ext_path = flask.request.values[input_upload_name]
 
-            result = do_flash_hex_file(board, programmer, port, baudrate, hex_path, ext_path)
+            result = self.do_flash_hex_file(board, programmer, port, baudrate, hex_path, ext_path)
 
             if result:
                 return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
