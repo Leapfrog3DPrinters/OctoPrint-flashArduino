@@ -40,10 +40,26 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
         ## Blueprint Plugin
         @octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
         def flash_hex_file_from_post(self):
-            board = flask.request.form['board']
-            programmer = flask.request.form['programmer']
-            port = flask.request.form['port']
-            baudrate = flask.request.form['baudrate']
+
+            if "board" in flask.request.form:
+                board = flask.request.form['board']
+            else:
+                board = "m2560"  
+
+            if "programmer" in flask.request.form:
+                programmer = flask.request.form['programmer']
+            else:
+                programmer = "wiring"
+
+            if "port" in flask.request.form:
+                port = flask.request.form['port']
+            else:
+                port = '/dev/ttyUSB0'
+
+            if "baudrate" in flask.request.form:
+                baudrate = flask.request.form['baudrate']
+            else:
+                baudrate = 115200;
 
             hex_path = None
             ext_path = None
@@ -73,16 +89,16 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
             ## Create list with arguments for avrdude from the POST in formData
             args = []
-            if "board" in flask.request.form:
+            if board:
                 board_arg = "-p " + board
                 args.append(board_arg)
-            if "programmer" in flask.request.form:
+            if programmer:
                 programmer_arg = "-c " + programmer
                 args.append(programmer_arg)
-            if "port" in flask.request.form:
+            if port:
                 port_arg = "-P " + port
                 args.append(port_arg)
-            if "baudrate" in flask.request.form:
+            if baudrate:
                 baudrate_arg = "-b " + baudrate
                 args.append(baudrate_arg)
             avrdude_conf = self._settings.get(["avrdude_conf"])
