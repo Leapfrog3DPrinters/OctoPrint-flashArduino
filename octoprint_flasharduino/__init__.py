@@ -77,8 +77,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
             result = self.do_flash_hex_file(board, programmer, port, baudrate, hex_path, ext_path)
 
-            if result:
-                return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
+            if not result:
+                return flask.make_response("Something went wrong while copying file with message.", 500)
             else:
                 return flask.make_response("SUPER SUCCESS", 201)
 
