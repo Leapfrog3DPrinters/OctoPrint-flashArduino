@@ -9,6 +9,9 @@ import octoprint.plugin
 import octoprint.settings
 import re
 import os
+import datetime
+from shutil import copy2
+import tempfile
 
 ##~~ Init Plugin and Metadata
 
@@ -36,27 +39,67 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
 
         ## Blueprint Plugin
         @octoprint.plugin.BlueprintPlugin.route("/flash", methods=["POST"])
-        def flash_hex_file(self):
-            import datetime
-            from shutil import copy2
-            import tempfile
+        def flash_hex_file_from_post(self):
 
+            if "board" in flask.request.form:
+                board = flask.request.form['board']
+            else:
+                board = "m2560"  
+
+            if "programmer" in flask.request.form:
+                programmer = flask.request.form['programmer']
+            else:
+                programmer = "wiring"
+
+            if "port" in flask.request.form:
+                port = flask.request.form['port']
+            else:
+                port = '/dev/ttyUSB0'
+
+            if "baudrate" in flask.request.form:
+                baudrate = flask.request.form['baudrate']
+            else:
+                baudrate = 115200;
+
+            hex_path = None
+            ext_path = None
+
+            input_name = "file"
+            input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
+            input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
+
+            if "local_path" in flask.request.values:
+                hex_path = flask.request.values["local_path"]
+                ext_path = os.path.basename(hex_path)
+            elif input_upload_name in flask.request.values and input_upload_path in flask.request.values:
+                hex_path = flask.request.values[input_upload_path]
+                ext_path = flask.request.values[input_upload_name]
+
+            result = self.do_flash_hex_file(board, programmer, port, baudrate, hex_path, ext_path)
+
+            if not result:
+                return flask.make_response("Something went wrong while copying file with message.", 500)
+            else:
+                return flask.make_response("SUPER SUCCESS", 201)
+
+        def do_flash_hex_file(self, board, programmer, port, baudrate, hex_path, ext_path):
+            
             ## Reset UI
             self._reset_progress()
 
             ## Create list with arguments for avrdude from the POST in formData
             args = []
-            if "board" in flask.request.form:
-                board_arg = "-p " + flask.request.form['board']
+            if board:
+                board_arg = "-p " + board
                 args.append(board_arg)
-            if "programmer" in flask.request.form:
-                programmer_arg = "-c " + flask.request.form['programmer']
+            if programmer:
+                programmer_arg = "-c " + programmer
                 args.append(programmer_arg)
-            if "port" in flask.request.form:
-                port_arg = "-P " + flask.request.form['port']
+            if port:
+                port_arg = "-P " + port
                 args.append(port_arg)
-            if "baudrate" in flask.request.form:
-                baudrate_arg = "-b " + flask.request.form['baudrate']
+            if baudrate:
+                baudrate_arg = "-b " + baudrate
                 args.append(baudrate_arg)
             avrdude_conf = self._settings.get(["avrdude_conf"])
             if avrdude_conf is not None:
@@ -64,20 +107,7 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
                 args.append(conf_arg)
             self._logger.debug(args)
 
-            hex_path = None
-            ext_path = None
-
-            ## Tornado hack
-            if "local_path" in flask.request.values:
-                hex_path = flask.request.values["local_path"]
-                ext_path = os.path.basename(hex_path)
-            elif input_upload_name in flask.request.values and input_upload_path in flask.request.values:
-                input_name = "file"
-                input_upload_name = input_name + "." + self._settings.global_get(["server", "uploads", "nameSuffix"])
-                input_upload_path = input_name + "." + self._settings.global_get(["server", "uploads", "pathSuffix"])
-                hex_path = flask.request.values[input_upload_path]
-                ext_path = flask.request.values[input_upload_name]
-
+        
             ## Upload the hexfile and try to flash the file. 
             if hex_path is not None and self.allowed_file(ext_path):
                 temp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -94,7 +124,8 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
                     self._call_avrdude(args)
                 except Exception as e:
                     self._logger.exception("Error while copying file")
-                    return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
+                    return False
+                    #return flask.make_response("Something went wrong while copying file with message: {message}".format(message=str(e)), 500)
                 finally:
                     os.remove(temp_file.name)
                     self._logger.debug("File deleted with name %s" % temp_file.name)
@@ -103,9 +134,11 @@ class FlashArduino(octoprint.plugin.TemplatePlugin,
             else:
                 self._logger.warn("No .hex file included for flashing, aborting")
                 self._send_result_update("failed")
-                return flask.make_response("No .hex file included", 400)
+                return False
+                #return flask.make_response("No .hex file included", 400)
 
-            return flask.make_response("SUPER SUCCESS", 201)
+            #return flask.make_response("SUPER SUCCESS", 201)
+            return True
 
         def allowed_file(self, filename):
             ext = os.path.splitext(filename)[1]

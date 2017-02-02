@@ -18,6 +18,8 @@ $(function() {
         self.flash_button = $("#settings-flash-arduino-start");
         self.upload_hex = $("#settings-flash-arduino");
 
+        self.flashing_complete_callback = undefined;
+
         self.resetFile = function ()
         {
             self.hex_path(undefined);
@@ -91,17 +93,20 @@ $(function() {
         self._displayNotification = function(response) {
             if (response == "success") {
                 $.notify({
-                    title: "Flashing firmware success!",
-                    text: _.sprintf(gettext('Flashed "%(filename)s" with success'), {filename: self.hex_path()})},
+                    title: "Flashing firmware success",
+                    text: _.sprintf(gettext('Firmware has been flashed succesfully!'))},
                     "success"
                 );
             } else {
                 $.notify({
-                    title: "Flashing firmware error!",
-                    text: _.sprintf(gettext('An error occured while flashing "%(filename)s". Please check logs.'), {filename: self.hex_path()})},
+                    title: "Flashing firmware error",
+                    text: _.sprintf(gettext('An error occured while flashing firmware. Please check logs.'))},
                     "error"
                 );
             }
+
+            if (self.flashing_complete_callback  !== undefined)
+                self.flashing_complete_callback(response == "success")
         };
 
         self.bar_progress = function(bar_type, progress) {
