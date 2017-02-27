@@ -9,7 +9,7 @@
 	position: absolute;
 }
 
-.progress span{
+#settings_plugin_flasharduino .progress span{
 	z-index: 2;
 	position: absolute;
 	top: 25%;
